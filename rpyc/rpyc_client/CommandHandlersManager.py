@@ -2,6 +2,8 @@ import rpyc
 from rpyc_client import command_handlers
 import subprocess
 
+# TODO: add documentation
+
 """
 manages all the handlers.
 The commands are:
