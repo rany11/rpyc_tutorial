@@ -13,7 +13,7 @@ if __name__ == "__main__":
         terminal.start()
 
     except ConnectionRefusedError:
-        print("cannot connect to slave host {0} on port {1}".format(ip_host, port_host))
+        print("cannot connect to slave host {0} on port {1}".format(ip_host, port_host), file=sys.stderr)
 
 
 

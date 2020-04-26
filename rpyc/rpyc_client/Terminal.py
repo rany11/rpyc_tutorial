@@ -26,7 +26,7 @@ class Terminal(object):
     def read_execute_command(self):
         user_input = input(self.prompt)
         if len(user_input) > 500:
-            print("input is too long")
+            print("input is too long", file=sys.stderr)
             return
         if len(user_input) == 0:
             return
