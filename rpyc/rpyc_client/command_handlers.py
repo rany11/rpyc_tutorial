@@ -1,7 +1,6 @@
 import psutil
 
 
-
 class CommandHandler(object):
     def __init__(self, rpyc_conn):
         self.rpyc_conn = rpyc_conn
