@@ -28,3 +28,6 @@ class FileMonitorService(rpyc.SlaveService):
                     self.callback(self.last_stat, stat)  # notify the client of the change
                 self.last_stat = stat
                 time.sleep(self.interval)
+
+        def get_monitored_filepath(self):
+            return self.filename

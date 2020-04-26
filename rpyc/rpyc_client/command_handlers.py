@@ -1,4 +1,5 @@
 import psutil
+import datetime
 
 
 class CommandHandler(object):
@@ -104,10 +105,6 @@ class KillProcessHandler(CommandHandler):
     def _parse_input(self, split_input, additional_input):
         if len(split_input) < 2:
             raise TypeError('expects at least one argument')
-        if split_input[1] == 'all':
-            if len(split_input) != 2:
-                raise TypeError('not expecting arguments after kill all command')
-            return {'created_processes': additional_input}
 
         if len(split_input) == 3:
             if not split_input[1].startswith('-'):
@@ -118,19 +115,9 @@ class KillProcessHandler(CommandHandler):
 
         raise TypeError('too many arguments')
 
-    def _execute(self, **kwargs):
-        if 'created_processes' in kwargs:
-            return self.__kill_all_created_processes(**kwargs)
-        return self.__kill_process(**kwargs)
-
-    def __kill_process(self, pid, signal=9):
+    def _execute(self, pid, signal=9):
         remote_os = self.rpyc_conn.modules.os
         remote_os.kill(pid, signal)
-        return self.empty_output
-
-    def __kill_all_created_processes(self, created_processes):
-        for process in created_processes:
-            process.kill()
         return self.empty_output
 
 
@@ -146,3 +133,42 @@ class RunAsNewProcessHandler(CommandHandler):
         command_line_input = path_to_executable + ' ' + string_args
         process = remote_subprocess.Popen(command_line_input)
         return None, process
+
+
+class MonitorHandler(CommandHandler):
+    def _parse_input(self, split_input, additional_input):
+        if len(split_input) != 3:
+            raise TypeError("expecting 2 arguments")
+
+        if split_input[1] == '-r':
+            return {'monitored_path': split_input[2], 'log_path': '', 'monitors': additional_input, 'remove': True}
+
+        return {'monitored_path': split_input[1], 'log_path': split_input[2], 'monitors': additional_input}
+
+    def _execute(self, monitored_path, log_path, monitors, remove=False):
+        if not remove and monitored_path in monitors:
+            return self.empty_output
+
+        if remove and monitored_path in monitors:
+            monitors[monitored_path].stop()
+            del monitors[monitored_path]
+            return self.empty_output
+
+        if remove and monitored_path not in monitors:
+            return self.empty_output
+
+        # not remove and monitored_path not in monitors
+        return '', self.rpyc_conn.root.FileMonitor(monitored_path, self.__get_callback(log_path))
+
+    # Warning: Careful with this closure
+    def __get_callback(self, log_path):
+        def callback(old_stat, new_stat):
+            with open(log_path, 'a+') as log_file:
+                print(datetime.datetime.now(), file=log_file)
+                print('old stat:', file=log_file)
+                print(old_stat, '\n', file=log_file)
+                print('new stat:', file=log_file)
+                print(new_stat, '\n', file=log_file)
+                print('-------------------------\n', file=log_file)
+
+        return callback
