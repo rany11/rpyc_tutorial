@@ -4,16 +4,6 @@ import time
 from threading import Thread
 
 
-def get_service_name():
-    return 'FileMonitor'
-
-
-"""
-The example from the docs.
-Monitoring a file and on each change call the given callback function.
-"""
-
-
 # The fact that we inherit from rpyc.SlaveService makes the exposed_ prefix not to work.
 # i.e., if we'd inherit from rpyc.Service using the exposed_ prefix would have worked.
 class FileMonitorService(rpyc.SlaveService):

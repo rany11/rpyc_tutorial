@@ -1,5 +1,7 @@
 import sys
-sys.path.append(r'C:\Users\ranyeheskel\Desktop\Training\rpyc\rpyc_client')
+import os
+
+sys.path.append(os.getcwd())
 from rpyc_client.CommandHandlersManager import CommandHandlersManager
 from rpyc_client.Terminal import Terminal
 
@@ -19,9 +21,3 @@ if __name__ == "__main__":
 
     except ConnectionRefusedError:
         print("cannot connect to slave host {0} on port {1}".format(ip_host, port_host), file=sys.stderr)
-
-
-
-
-
-
