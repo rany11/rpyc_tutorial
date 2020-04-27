@@ -8,16 +8,16 @@ To run the client just run the <i>rpyc/rpyc_client/client.py</i> script with the
 
 The supported commands are:
 
-upload {srcpath} {dstpath}
-download {srcpath} {dstpath}
-ps
-ls {path}
-exec {path} [args]
-stat {path}
-kill [-signo] {pid}
-kill all
-monitors
-monitor {path} {logpath}
-monitor -r {path}
+  - upload {srcpath} {dstpath}
+  - download {srcpath} {dstpath}
+  - ps
+  - ls {path}
+  - exec {path} [args]
+  - stat {path}
+  - kill [-signo] {pid}
+  - kill all
+  - monitors
+  - monitor {path} {logpath}
+  - monitor -r {path}
 
-
+  
