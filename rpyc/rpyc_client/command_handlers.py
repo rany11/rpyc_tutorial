@@ -1,6 +1,12 @@
 import psutil
 import datetime
 
+"""
+All the command handlers.
+They parse, execute and possibly format the output for the terminal.
+They (must) also return (and receive) additional information to the command_handlers_manager. 
+"""
+
 
 class CommandHandler(object):
     def __init__(self, rpyc_conn):

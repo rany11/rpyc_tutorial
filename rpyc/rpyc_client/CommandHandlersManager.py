@@ -3,7 +3,10 @@ from rpyc_client import command_handlers
 import subprocess
 
 """
-manages all the handlers.
+manages all the command handlers.
+Responsible to execute all the commands (using the relevant command handlers).
+Can execute some commands by itself, if they don't require communication with the slave server (e.g. monitors).
+
 The commands are:
 
 upload srcpath dstpath
@@ -23,7 +26,7 @@ monitor -r path
 class CommandHandlersManager(object):
     """
     ip_slave_rpyc, port_slave_rpyc- ip and port of a machine that runs my special SlaveService.
-    (my special SlaveService- currently, FileMonitorService)
+    (my special SlaveService: FileMonitorService)
 
     __init__ can throw: ConnectionRefusedError
     """

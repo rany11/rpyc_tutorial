@@ -1,5 +1,10 @@
 import sys
 
+"""
+The Terminal that reads commands and give them to the command_handlers_manager to execute.
+Just a simple terminal, no advanced features
+"""
+
 
 class Terminal(object):
     """

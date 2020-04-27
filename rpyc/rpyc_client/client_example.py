@@ -1,5 +1,8 @@
 import rpyc
 
+"""
+Just an example from the docs.
+"""
 
 def on_file_change(oldstat, newstat):
     print("file changed")
