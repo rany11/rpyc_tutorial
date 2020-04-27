@@ -4,13 +4,13 @@ from rpyc_client.CommandHandlersManager import CommandHandlersManager
 from rpyc_client.Terminal import Terminal
 
 """
-gets ip_host (default localhost) and port_host (default 18812)
+gets ip_host (default localhost) and port_host (default 18871)
 and gives a client side terminal.
 """
 
 if __name__ == "__main__":
     ip_host = "localhost" if len(sys.argv) <= 1 else sys.argv[1]
-    port_host = 18812 if len(sys.argv) <= 2 else sys.argv[2]
+    port_host = 18871 if len(sys.argv) <= 2 else sys.argv[2]
 
     try:
         command_handlers_manager = CommandHandlersManager(ip_host, port_host)

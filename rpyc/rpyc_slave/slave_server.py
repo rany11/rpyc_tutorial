@@ -1,10 +1,10 @@
-# Run this as python -m rpyc_slave.slave_server
-
 from rpyc.utils.server import ThreadedServer
 import rpyc_slave.FileMonitorService
 
 """
-Executes the slave server
+Executes the slave server.
+Run this as (from the rpyc project's root directory):
+python -m rpyc_slave.slave_server
 """
 if __name__ == "__main__":
     ThreadedServer(rpyc_slave.FileMonitorService, port=18871).start()
