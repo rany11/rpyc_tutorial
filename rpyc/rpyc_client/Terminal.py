@@ -1,8 +1,10 @@
 import sys
+from rpyc_client.CommandHandlersManager import CommandHandlersManager
 
 """
 The Terminal that reads commands and give them to the command_handlers_manager to execute.
-Just a simple terminal, no advanced features
+Just a simple terminal, no advanced features.
+__init__ may throw ConnectionRefusedError.
 """
 
 
@@ -11,9 +13,9 @@ class Terminal(object):
     command_handlers_manager is type CommandHandlersManager
     """
 
-    def __init__(self, command_handlers_manager, prompt='> '):
+    def __init__(self, server_ip, server_port, prompt='> '):
         self.prompt = prompt
-        self.command_handlers_manager = command_handlers_manager
+        self.command_handlers_manager = CommandHandlersManager(server_ip, server_port)
         self.is_activated = False
 
     def start(self):
