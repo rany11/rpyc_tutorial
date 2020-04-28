@@ -6,8 +6,8 @@ from rpyc_client.CommandHandlersManager import CommandHandlersManager
 from rpyc_client.Terminal import Terminal
 
 """
-gets ip_host (default localhost) and port_host (default 18871)
-and gives a client side terminal.
+input: ip_host (default localhost) and port_host (default 18871)
+output: gives a client side terminal, that communicates with the server.
 """
 
 if __name__ == "__main__":
