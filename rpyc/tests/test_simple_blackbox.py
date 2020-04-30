@@ -20,11 +20,16 @@ def set_input_commands(monkeypatch, request):
     monkeypatch.setattr(builtins, "input", InputCommandsFactory(request.param))
 
 
+@pytest.fixture()
+def terminal(request):
+    return rpyc_client.Terminal.Terminal(request.param[0], request.param[1])
+
+
 @pytest.mark.usefixtures("set_input_commands")
 @pytest.mark.parametrize("set_input_commands", [['ps']], indirect=True)
-def test_simple_stupid_upload(capsys):
-    client = rpyc_client.Terminal.Terminal("localhost", 18871)
-    client.start()
+@pytest.mark.parametrize("terminal", [("localhost", 18871)], indirect=True)
+def test_simple_stupid_upload(capsys, terminal):
+    terminal.start()
 
     captured = capsys.readouterr()
     assert len(captured.out) > 10 and 'p' in captured.out
