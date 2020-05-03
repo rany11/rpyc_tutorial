@@ -1,6 +1,6 @@
 # rpyc_tutorial
 
-Contains server and client that communicating in rpyc, for Windows.
+Contains server and client that communicating in rpyc (Python 3), for Windows (but should be cross-platform).
 
 To run the server execute (from the project's root directory): <i>python -m rpyc_slave.slave_server</i>
 
@@ -30,5 +30,7 @@ The supported commands are:
       - monitors changes in the remote {path} and loggs them in the local file {logpath}.
   - monitor -r {path}
       - deletes a monitor of the remote file {path}.
+  - rm -r --empy-files {path}
+      - deletes all empty files from {path} and all its subdirectories.
 
   
