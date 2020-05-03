@@ -7,7 +7,7 @@ import shutil
 
 # gets a list of commands to the terminal (as strings)
 # Redirects these commands to the terminal as stdin
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def set_input_commands(monkeypatch, request):
     # objects of this class simulates stdin input to the terminal
     class InputCommandsFactory(object):
@@ -29,8 +29,9 @@ def set_input_commands(monkeypatch, request):
 # receives the ip and port of the server
 # Returns a terminal connected to the server
 @pytest.fixture(scope='module')
-def terminal(request):
-    user_terminal = rpyc_client.Terminal.Terminal(request.param[0], request.param[1], is_test_mod=True)
+def terminal(server_ip_port):
+    server_ip, server_port = tuple(server_ip_port.split(':'))
+    user_terminal = rpyc_client.Terminal.Terminal(server_ip, server_port, is_test_mod=True)
     yield user_terminal
     user_terminal.stop()
 
