@@ -18,7 +18,7 @@ class Terminal(object):
         self.command_handlers_manager = CommandHandlersManager(server_ip, server_port)
         self.is_activated = False
 
-    def start(self):
+    def start(self, close_on_input_end=True):
         self.is_activated = True
         while self.is_activated:
             command_output = self.read_execute_command()
@@ -28,7 +28,8 @@ class Terminal(object):
                 else:
                     print(command_output)
 
-        self.__stop()
+        if close_on_input_end:
+            self.stop()
 
     def read_execute_command(self):
         user_input = input(self.prompt)
@@ -48,5 +49,5 @@ class Terminal(object):
         command_output = self.command_handlers_manager.execute(user_command, command_args)
         return command_output
 
-    def __stop(self):
+    def stop(self):
         self.command_handlers_manager.close()
