@@ -20,6 +20,7 @@ kill all
 monitors
 monitor path logpath
 monitor -r path
+rm -r --empty-files path
 """
 
 
@@ -46,7 +47,8 @@ class CommandHandlersManager(object):
                                 "exec": command_handlers.RunAsNewProcessHandler(self.classic_conn),
                                 "stat": command_handlers.FileStatHandler(self.classic_conn),
                                 "kill": command_handlers.KillProcessHandler(self.classic_conn),
-                                "monitor": command_handlers.MonitorHandler(self.conn)
+                                "monitor": command_handlers.MonitorHandler(self.conn),
+                                "rm": command_handlers.RemoveHandler(self.classic_conn)
                                 }
 
         self.monitors = dict()  # filepath --> monitor object

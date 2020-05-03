@@ -178,3 +178,26 @@ class MonitorHandler(CommandHandler):
                 print('-------------------------\n', file=log_file)
 
         return callback
+
+
+class RemoveHandler(CommandHandler):
+    def _parse_input(self, split_input, additional_input):
+        if {split_input[1], split_input[2]} != {'-r', '--empty-files'}:
+            raise TypeError("incorrect usage")
+        return {'path': split_input[3]}
+
+    def __get_remove_empty_files_function(self):
+        def remove_empty_files(base_dir_path):
+            import os
+            for path, subdirs, files in os.walk(base_dir_path):
+                for name in files:
+                    full_file_name = os.path.join(path, name)
+                    if os.stat(full_file_name).st_size == 0:
+                        os.remove(full_file_name)
+
+        return remove_empty_files
+
+    def _execute(self, path):
+        teleported_func = self.rpyc_conn.teleport(self.__get_remove_empty_files_function())
+        teleported_func(path)
+        return self.empty_output
