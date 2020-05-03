@@ -28,9 +28,11 @@ def set_input_commands(monkeypatch, request):
 
 # receives the ip and port of the server
 # Returns a terminal connected to the server
-@pytest.fixture()
+@pytest.fixture(scope='module')
 def terminal(request):
-    return rpyc_client.Terminal.Terminal(request.param[0], request.param[1])
+    user_terminal = rpyc_client.Terminal.Terminal(request.param[0], request.param[1], is_test_mod=True)
+    yield user_terminal
+    user_terminal.stop()
 
 
 @pytest.fixture()

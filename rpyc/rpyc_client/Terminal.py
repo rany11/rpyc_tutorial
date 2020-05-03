@@ -13,12 +13,13 @@ class Terminal(object):
     command_handlers_manager is type CommandHandlersManager
     """
 
-    def __init__(self, server_ip, server_port, prompt='> '):
+    def __init__(self, server_ip, server_port, prompt='> ', is_test_mod=False):
         self.prompt = prompt
         self.command_handlers_manager = CommandHandlersManager(server_ip, server_port)
         self.is_activated = False
+        self.is_test_mod = is_test_mod
 
-    def start(self, close_on_input_end=True):
+    def start(self):
         self.is_activated = True
         while self.is_activated:
             command_output = self.read_execute_command()
@@ -28,7 +29,7 @@ class Terminal(object):
                 else:
                     print(command_output)
 
-        if close_on_input_end:
+        if not self.is_test_mod:
             self.stop()
 
     def read_execute_command(self):
