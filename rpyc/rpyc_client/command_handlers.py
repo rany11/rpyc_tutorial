@@ -7,6 +7,8 @@ They parse, execute and return output (if any) to the terminal.
 """
 
 
+# TODO: make better parsing, a lot of code duplication. Also spaces in paths are not supported.
+
 class CommandHandler(object):
     def __init__(self, rpyc_conn):
         self.rpyc_conn = rpyc_conn
@@ -100,7 +102,10 @@ class KillProcessHandler(CommandHandler):
         if len(command_with_arguments) == 3:
             return self.__execute_kill_signo_pid(command_with_arguments)
 
-        if command_with_arguments[2] == 'all':
+        if len(command_with_arguments) != 2:
+            raise TypeError("Incorrect usage")
+
+        if command_with_arguments[1] == 'all':
             return self.__execute_kill_all()
 
         return self.__execute_kill_pid(command_with_arguments)
@@ -123,6 +128,7 @@ class KillProcessHandler(CommandHandler):
     def __execute_kill_all(self):
         for process in self.created_processes:
             process.kill()
+        self.created_processes.clear()
 
 
 class RunAsNewProcessHandler(CommandHandler):
