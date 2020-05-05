@@ -1,13 +1,20 @@
 import psutil
 import datetime
+import argparse
+
+
+def parse_single_path_argument(argv):
+    parser = argparse.ArgumentParser(prog=argv[0])
+    parser.add_argument('path')
+    args = parser.parse_args(argv[1:])
+    return args.path
+
 
 """
 All the command handlers.
 They parse, execute and return output (if any) to the terminal. 
 """
 
-
-# TODO: make better parsing, a lot of code duplication. Also spaces in paths are not supported.
 
 class CommandHandler(object):
     def __init__(self, rpyc_conn):
@@ -30,9 +37,11 @@ class CopyFileHandler(CommandHandler):
         return self.__execute_download(srcpath, dstpath)
 
     def __parse_input(self, command_with_arguments):
-        if len(command_with_arguments) != 3:
-            raise TypeError('Expecting 2 arguments')
-        return command_with_arguments[1], command_with_arguments[2]
+        parser = argparse.ArgumentParser(command_with_arguments[0])
+        parser.add_argument('srcpath')
+        parser.add_argument('dstpath')
+        args = parser.parse_args(command_with_arguments[1:])
+        return args.srcpath, args.dstpath
 
     def __execute_upload(self, srcpath, dstpath):
         with open(srcpath, 'rb') as src:
@@ -54,14 +63,9 @@ class CopyFileHandler(CommandHandler):
 
 class DirlistHandler(CommandHandler):
     def execute(self, command_with_arguments):
-        path = self.__parse_input(command_with_arguments)
+        path = parse_single_path_argument(command_with_arguments)
         remote_os = self.rpyc_conn.modules.os
         return remote_os.listdir(path)
-
-    def __parse_input(self, command_with_arguments):
-        if len(command_with_arguments) != 2:
-            raise TypeError('expecting one argument')
-        return command_with_arguments[1]
 
 
 class ProcessListHandler(CommandHandler):
@@ -85,20 +89,21 @@ class ProcessListHandler(CommandHandler):
 
 class FileStatHandler(CommandHandler):
     def execute(self, command_with_arguments):
-        path = self.__parse_input(command_with_arguments)
+        path = parse_single_path_argument(command_with_arguments)
         remote_os = self.rpyc_conn.modules.os
         return remote_os.stat(path)
-
-    def __parse_input(self, command_with_arguments):
-        if len(command_with_arguments) != 2:
-            raise TypeError('expecting one argument')
-        return command_with_arguments[1]
 
 
 class KillProcessHandler(CommandHandler):
     def __init__(self, rpyc_conn, created_processes):
         super().__init__(rpyc_conn)
         self.created_processes = created_processes
+
+    def __parse_input(self, command_with_arguments):
+        parser = argparse.ArgumentParser(command_with_arguments[0])
+        parser.add_argument('path')
+        args = parser.parse_args(command_with_arguments[1:])
+        return args.path
 
     def execute(self, command_with_arguments):
         if len(command_with_arguments) < 2:
@@ -142,18 +147,13 @@ class RunAsNewProcessHandler(CommandHandler):
         self.created_processes = created_processes
 
     def execute(self, command_with_arguments):
-        path_to_exe, argv_to_exe = self.__parse_input(command_with_arguments)
+        path_to_exe, argv_to_exe = parse_single_path_argument(command_with_arguments)
         remote_subprocess = self.rpyc_conn.modules.subprocess
         string_args = ' '.join(argv_to_exe)
         command_line_input = path_to_exe + ' ' + string_args
         process = remote_subprocess.Popen(command_line_input)
 
         self.created_processes += [process]
-
-    def __parse_input(self, command_with_arguments):
-        if len(command_with_arguments) < 2:
-            raise TypeError('expecting at least one argument')
-        return command_with_arguments[1], command_with_arguments[2:]
 
 
 class MonitorHandler(CommandHandler):
@@ -206,9 +206,15 @@ class RemoveHandler(CommandHandler):
         teleported_func(path_to_delete)
 
     def __parse_input(self, command_with_arguments):
-        if (command_with_arguments[1], command_with_arguments[2]) != ('-r', '--empty-files'):
-            raise TypeError("incorrect usage")
-        return command_with_arguments[3]
+        parser = argparse.ArgumentParser(prog=command_with_arguments[0])
+        parser.add_argument("-r", "--recursive", action="store_true")
+        parser.add_argument("--empty-files", action="store_true")
+        parser.add_argument('path')
+        args = parser.parse_args(command_with_arguments[1:])
+        if not (args.recursive and args.empty_files):
+            raise TypeError('Incorrect usage')
+
+        return args.path
 
     def __get_remove_empty_files_recursively_function(self):
         def remove_empty_files_recursively(base_dir_path):

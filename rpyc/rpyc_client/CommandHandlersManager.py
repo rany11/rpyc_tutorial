@@ -76,6 +76,8 @@ class CommandHandlersManager(object):
         except Exception as e:
             # get just the error message without the stack-trace
             raise ErrorMessage(str(e).split('\n')[0])
+        except SystemExit as _:
+            raise ErrorMessage("incorrect usage")
 
     def close(self):
         self.command_handlers['monitor'].close_monitors()
