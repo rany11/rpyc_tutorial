@@ -3,16 +3,21 @@ import os
 import time
 from threading import Thread
 
+"""
+This is a service that is a SlaveService,
+and also supplies the FileMonitor class for monitoring file changes
+"""
 
-# The fact that we inherit from rpyc.SlaveService makes the exposed_ prefix not to work.
-# i.e., if we'd inherit from rpyc.Service using the exposed_ prefix would have worked.
+
 class FileMonitorService(rpyc.SlaveService):
     class FileMonitor(object):
         def __init__(self, filename, callback, interval=1):
             self.filename = filename
             self.interval = interval
             self.last_stat = None
-            self.callback = rpyc.async_(callback)  # create an async callback
+
+            # create an async callback. FileMonitor just notifies on the file change. Doesn't need to wait for an answer
+            self.callback = rpyc.async_(callback)
             self.active = True
             self.thread = Thread(target=self.__work)
             self.thread.start()

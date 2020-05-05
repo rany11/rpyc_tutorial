@@ -1,5 +1,6 @@
 import psutil
 import datetime
+from .ErrorMessage import ErrorMessage
 
 """
 All the command handlers.
@@ -14,10 +15,10 @@ class CommandHandler(object):
         self.empty_output = (None, None)
 
     def _parse_input(self, split_input, additional_input):
-        pass
+        raise NotImplementedError()
 
-    def _execute(self, **kwargs):
-        return self.empty_output
+    def _execute(self, **kwargs):  # real signature unknown
+        raise NotImplementedError()
 
     def _format_output(self, output):
         return output
@@ -29,7 +30,7 @@ class CommandHandler(object):
             terminal_output = self._format_output(terminal_output) if terminal_output else terminal_output
             return terminal_output, manager_output
         except BaseException as e:
-            return 'Error: ' + str(e), None
+            raise ErrorMessage(str(e))
 
 
 class CopyFileHandler(CommandHandler):

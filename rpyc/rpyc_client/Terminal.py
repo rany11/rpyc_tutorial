@@ -1,5 +1,9 @@
 import sys
-from rpyc_client.CommandHandlersManager import CommandHandlersManager
+from .CommandHandlersManager import CommandHandlersManager
+from .ErrorMessage import ErrorMessage
+
+REGULAR_PROMPT = '> '
+MAX_INPUT_LENGTH = 2000
 
 """
 The Terminal that reads commands and give them to the command_handlers_manager to execute.
@@ -13,29 +17,33 @@ class Terminal(object):
     command_handlers_manager is type CommandHandlersManager
     """
 
-    def __init__(self, server_ip, server_port, prompt='> '):
+    def __init__(self, command_handlers_manager, prompt=REGULAR_PROMPT):
         self.prompt = prompt
-        self.command_handlers_manager = CommandHandlersManager(server_ip, server_port)
+        self.command_handlers_manager = command_handlers_manager
         self.is_activated = False
 
     def start(self):
         self.is_activated = True
         while self.is_activated:
-            command_output = self.read_execute_command()
-            if command_output:
-                if type(command_output) is str and command_output.startswith('Error: '):
-                    print(command_output, file=sys.stderr)
-                else:
+            try:
+                command_output = self.read_execute_command()
+                if command_output:
                     print(command_output)
+
+            except ErrorMessage as e:
+                print(e.error_message, file=sys.stderr)
 
         self.__stop()
 
+    """
+    This function read a single command from the user, executes and returns the terminal output.
+    @throws: ErrorMessage
+    """
     def read_execute_command(self):
         user_input = input(self.prompt)
-        if len(user_input) > 500:
-            print("input is too long", file=sys.stderr)
-            return
-        if len(user_input) == 0:
+        if not self.__is_user_input_valid(user_input):
+            raise ErrorMessage("invalid input")
+        if len(user_input) == 0:  # user just pressed Enter key. We do nothing
             return
 
         split_input = user_input.split(' ')
@@ -50,3 +58,6 @@ class Terminal(object):
 
     def __stop(self):
         self.command_handlers_manager.close()
+
+    def __is_user_input_valid(self, user_input):
+        return len(user_input) <= MAX_INPUT_LENGTH
