@@ -1,6 +1,6 @@
 import psutil
 import datetime
-from .ErrorMessage import ErrorMessage
+from ErrorMessage import ErrorMessage
 
 """
 All the command handlers.
@@ -29,8 +29,9 @@ class CommandHandler(object):
             terminal_output, manager_output = self._execute(**kwargs)
             terminal_output = self._format_output(terminal_output) if terminal_output else terminal_output
             return terminal_output, manager_output
-        except BaseException as e:
-            raise ErrorMessage(str(e))
+        except Exception as e:
+            # get just the error message without the stack-trace
+            raise ErrorMessage(str(e).split('\n')[0])
 
 
 class CopyFileHandler(CommandHandler):

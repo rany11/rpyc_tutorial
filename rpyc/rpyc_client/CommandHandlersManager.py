@@ -1,6 +1,6 @@
 import rpyc
-from rpyc_client import command_handlers
-from rpyc_client.ErrorMessage import ErrorMessage
+import command_handlers
+from ErrorMessage import ErrorMessage
 import subprocess
 
 """

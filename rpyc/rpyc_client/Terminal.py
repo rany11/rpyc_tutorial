@@ -1,6 +1,5 @@
 import sys
-from .CommandHandlersManager import CommandHandlersManager
-from .ErrorMessage import ErrorMessage
+from ErrorMessage import ErrorMessage
 
 REGULAR_PROMPT = '> '
 MAX_INPUT_LENGTH = 2000
@@ -29,7 +28,6 @@ class Terminal(object):
                 command_output = self.read_execute_command()
                 if command_output:
                     print(command_output)
-
             except ErrorMessage as e:
                 print(e.error_message, file=sys.stderr)
 

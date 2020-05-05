@@ -1,6 +1,6 @@
 import sys
-from .Terminal import Terminal
-from .CommandHandlersManager import CommandHandlersManager
+from Terminal import Terminal
+from CommandHandlersManager import CommandHandlersManager
 
 DEFAULT_IP = "localhost"
 DEFAULT_PORT = 18871

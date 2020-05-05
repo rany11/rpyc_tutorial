@@ -1,5 +1,5 @@
 from rpyc.utils.server import ThreadedServer
-from .FileMonitorService import FileMonitorService
+from rpyc_slave.FileMonitorService import FileMonitorService
 
 DEFAULT_PORT = 18871
 
