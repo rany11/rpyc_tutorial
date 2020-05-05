@@ -1,5 +1,5 @@
 import sys
-from ErrorMessage import ErrorMessage
+from exceptions import ErrorMessage
 
 REGULAR_PROMPT = '> '
 MAX_INPUT_LENGTH = 2000
@@ -45,13 +45,12 @@ class Terminal(object):
             return
 
         split_input = user_input.split(' ')
-        user_command, command_args = split_input[0], split_input[1:]
-
+        user_command = split_input[0]
         if user_command in ["quit", "exit"]:
             self.is_activated = False
             return
 
-        command_output = self.command_handlers_manager.execute(user_command, command_args)
+        command_output = self.command_handlers_manager.execute(split_input)
         return command_output
 
     def __stop(self):
