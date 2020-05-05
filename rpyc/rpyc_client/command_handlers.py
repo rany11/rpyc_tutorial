@@ -119,7 +119,6 @@ class KillProcessHandler(CommandHandler):
     def __kill(self, pid, signal=9):
         remote_os = self.rpyc_conn.modules.os
         remote_os.kill(pid, signal)
-        return self.empty_output
 
     def __execute_kill_all(self):
         for process in self.created_processes:
