@@ -18,10 +18,15 @@ class CommandHandler(object):
 
 
 class CopyFileHandler(CommandHandler):
+    def __init__(self, rpyc_conn):
+        super().__init__(rpyc_conn)
+        self.UPLOAD_COMMAND = 'upload'
+
     def execute(self, command_with_arguments):
         srcpath, dstpath = self.__parse_input(command_with_arguments)
-        if command_with_arguments[0] == 'upload':
+        if command_with_arguments[0] == self.UPLOAD_COMMAND:
             return self.__execute_upload(srcpath, dstpath)
+
         return self.__execute_download(srcpath, dstpath)
 
     def __parse_input(self, command_with_arguments):
@@ -164,8 +169,9 @@ class MonitorHandler(CommandHandler):
         if len(command_with_arguments) != 3:
             raise TypeError("expecting 2 arguments")
 
-        if command_with_arguments[1] == '-r':
+        if command_with_arguments[1] == '-r':  # -r is a remove flag
             return self.__remove_monitor(command_with_arguments[2])
+
         return self.__add_monitor(command_with_arguments[1], command_with_arguments[2])
 
     def __remove_monitor(self, monitored_path):
