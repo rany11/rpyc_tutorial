@@ -1,7 +1,7 @@
 import sys
 from Terminal import Terminal
 from CommandHandlersManager import CommandHandlersManager
-from slave_server import DEFAULT_PORT
+from server import DEFAULT_PORT
 
 DEFAULT_IP = "localhost"
 
