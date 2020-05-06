@@ -2,6 +2,8 @@ import psutil
 import datetime
 import argparse
 
+DEFAULT_COPY_CHUNK_SIZE = 2 ** 14
+
 
 def parse_single_path_argument(argv):
     parser = argparse.ArgumentParser(prog=argv[0])
@@ -21,20 +23,27 @@ class CommandHandler(object):
         self.rpyc_conn = rpyc_conn
 
     def execute(self, command_with_arguments):
+        """
+        executes the command. Might raise exception on failures or incorrect usage.
+        :param command_with_arguments: exactly as argv for a script
+        :return: string that is an output to the terminal
+        """
         raise NotImplementedError()
 
 
 class CopyFileHandler(CommandHandler):
     def __init__(self, rpyc_conn):
         super().__init__(rpyc_conn)
+        self.DOWNLOAD_COMMAND = 'download'
         self.UPLOAD_COMMAND = 'upload'
 
     def execute(self, command_with_arguments):
         srcpath, dstpath = self.__parse_input(command_with_arguments)
         if command_with_arguments[0] == self.UPLOAD_COMMAND:
             return self.__execute_upload(srcpath, dstpath)
-
-        return self.__execute_download(srcpath, dstpath)
+        elif command_with_arguments[0] == self.DOWNLOAD_COMMAND:
+            return self.__execute_download(srcpath, dstpath)
+        raise ValueError("Unexpected command")
 
     def __parse_input(self, command_with_arguments):
         parser = argparse.ArgumentParser(command_with_arguments[0])
@@ -53,7 +62,7 @@ class CopyFileHandler(CommandHandler):
             with open(dstpath, "wb") as dst:
                 self.__copy_file(src, dst)
 
-    def __copy_file(self, src_file_handler, dst_file_handler, chunk_size=2 ** 14):
+    def __copy_file(self, src_file_handler, dst_file_handler, chunk_size=DEFAULT_COPY_CHUNK_SIZE):
         while True:
             buf = src_file_handler.read(chunk_size)
             if not buf:
@@ -70,8 +79,7 @@ class DirlistHandler(CommandHandler):
 
 class ProcessListHandler(CommandHandler):
     def execute(self, command_with_arguments):
-        if len(command_with_arguments) != 1:
-            raise TypeError('not expecting any arguments')
+        self.__validate_input(command_with_arguments)
 
         remote_psutil = self.rpyc_conn.modules.psutil
         process_list = []
@@ -85,6 +93,10 @@ class ProcessListHandler(CommandHandler):
                 pass  # we can't access these processes
 
         return process_list
+
+    def __validate_input(self, command_with_arguments):
+        if len(command_with_arguments) != 1:
+            raise TypeError('not expecting any arguments')
 
 
 class FileStatHandler(CommandHandler):
@@ -147,7 +159,7 @@ class RunAsNewProcessHandler(CommandHandler):
         self.created_processes = created_processes
 
     def execute(self, command_with_arguments):
-        path_to_exe, argv_to_exe = parse_single_path_argument(command_with_arguments)
+        path_to_exe, argv_to_exe = command_with_arguments[0], command_with_arguments[1:]
         remote_subprocess = self.rpyc_conn.modules.subprocess
         string_args = ' '.join(argv_to_exe)
         command_line_input = path_to_exe + ' ' + string_args

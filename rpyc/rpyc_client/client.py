@@ -1,9 +1,9 @@
 import sys
 from Terminal import Terminal
 from CommandHandlersManager import CommandHandlersManager
+from slave_server import DEFAULT_PORT
 
 DEFAULT_IP = "localhost"
-DEFAULT_PORT = 18871
 
 
 def get_terminal(ip_server=DEFAULT_IP, port_server=DEFAULT_PORT):

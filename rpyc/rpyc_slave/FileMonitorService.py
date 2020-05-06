@@ -3,14 +3,17 @@ import os
 import time
 from threading import Thread
 
-"""
-This is a service that is a SlaveService,
-and also supplies the FileMonitor class for monitoring file changes
-"""
-
 
 class FileMonitorService(rpyc.SlaveService):
+    """
+    This is a service that is a SlaveService,
+    and also supplies the FileMonitor class for monitoring file changes
+    """
     class FileMonitor(object):
+        """
+        This class monitors changes in a given file.
+        Upon change the client's callback is called.
+        """
         def __init__(self, filename, callback, interval=1):
             self.filename = filename
             self.interval = interval
