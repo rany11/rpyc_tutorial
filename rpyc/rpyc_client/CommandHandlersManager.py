@@ -1,6 +1,6 @@
 import rpyc
 import command_handlers
-from exceptions import ErrorMessage
+from exceptions import CommandUsageError
 
 """
 manages all the command handlers.
@@ -61,33 +61,25 @@ class CommandHandlersManager(object):
                                  "rm": command_handlers.RemoveHandler(self.classic_conn)
                                  }
 
-    """
-    @returns: the command output (or None if there is no output).
-    """
-
     def execute(self, command_with_args):
+        """
+        @returns: the command output (or None if there is no output).
+        """
         command = command_with_args[0]
         if command not in self.command_handlers:
-            raise ErrorMessage('Unknown command')
+            raise CommandUsageError('Unknown command')
 
         try:
             terminal_output = self.command_handlers[command].execute(command_with_args)
             return terminal_output
         except Exception as e:
             # get just the error message without the stack-trace
-            raise ErrorMessage(str(e).split('\n')[0])
-        except SystemExit as _:
-            raise ErrorMessage("incorrect usage")
+            raise CommandUsageError(str(e).split('\n')[0])
+        except SystemExit as _:  # this can be raised from argparse.parse_args() in case of wrong usage
+            raise CommandUsageError("incorrect usage")
 
     def close(self):
         self.command_handlers['monitor'].close_monitors()
         self.bgsrv.stop()
         self.conn.close()
         self.classic_conn.close()
-
-    """
-    def __kill_all_created_processes(self):
-        for process in self.created_processes:
-            process.kill()
-        self.created_processes = []
-    """

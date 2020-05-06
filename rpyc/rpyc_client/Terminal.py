@@ -1,8 +1,9 @@
 import sys
-from exceptions import ErrorMessage
+from exceptions import CommandUsageError
 
-REGULAR_PROMPT = '> '
+DEFAULT_PROMPT = '> '
 MAX_INPUT_LENGTH = 2000
+EXIT_TERMINAL_COMMANDS = ["quit", "exit"]
 
 """
 The Terminal that reads commands and give them to the command_handlers_manager to execute.
@@ -16,7 +17,7 @@ class Terminal(object):
     command_handlers_manager is type CommandHandlersManager
     """
 
-    def __init__(self, command_handlers_manager, prompt=REGULAR_PROMPT):
+    def __init__(self, command_handlers_manager, prompt=DEFAULT_PROMPT):
         self.prompt = prompt
         self.command_handlers_manager = command_handlers_manager
         self.is_activated = False
@@ -28,25 +29,25 @@ class Terminal(object):
                 command_output = self.read_execute_command()
                 if command_output:
                     print(command_output)
-            except ErrorMessage as e:
+            except CommandUsageError as e:
                 print(e.error_message, file=sys.stderr)
 
         self.__stop()
 
-    """
-    This function read a single command from the user, executes and returns the terminal output.
-    @throws: ErrorMessage
-    """
     def read_execute_command(self):
+        """
+        This function read a single command from the user, executes and returns the terminal output.
+        @throws: ErrorMessage
+        """
         user_input = input(self.prompt)
         if not self.__is_user_input_valid(user_input):
-            raise ErrorMessage("invalid input")
+            raise CommandUsageError("invalid input")
         if len(user_input) == 0:  # user just pressed Enter key. We do nothing
             return
 
         split_input = user_input.split(' ')
         user_command = split_input[0]
-        if user_command in ["quit", "exit"]:
+        if user_command in EXIT_TERMINAL_COMMANDS:
             self.is_activated = False
             return
 

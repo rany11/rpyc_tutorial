@@ -1,4 +1,4 @@
-class ErrorMessage(Exception):
+class CommandUsageError(Exception):
     def __init__(self, message):
         self.error_message = 'Error: ' + message
 
