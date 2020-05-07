@@ -118,23 +118,24 @@ class KillProcessHandler(CommandHandler):
         return args.path
 
     def execute(self, command_with_arguments):
-        if len(command_with_arguments) < 2:
-            raise TypeError('expects at least one argument')
-
         if len(command_with_arguments) == 3:
+            # the command is: kill -signo pid
+            if not command_with_arguments[1].startswith('-'):
+                # signo should start with '-' prefix
+                raise ValueError('Incorrect usage')
             return self.__execute_kill_signo_pid(command_with_arguments)
 
-        if len(command_with_arguments) != 2:
-            raise TypeError("Incorrect usage")
+        if len(command_with_arguments) == 2:
+            if command_with_arguments[1] == 'all':
+                # the command is: kill all
+                return self.__execute_kill_all()
+            else:
+                # the command is kill pid
+                return self.__execute_kill_pid(command_with_arguments)
 
-        if command_with_arguments[1] == 'all':
-            return self.__execute_kill_all()
-
-        return self.__execute_kill_pid(command_with_arguments)
+        raise TypeError('Incorrect usage')
 
     def __execute_kill_signo_pid(self, command_with_arguments):
-        if not command_with_arguments[1].startswith('-'):
-            raise ValueError('Incorrect usage')
         signo = int(command_with_arguments[1][1:])
         pid = int(command_with_arguments[2])
         return self.__kill(pid, signo)
@@ -175,17 +176,19 @@ class MonitorHandler(CommandHandler):
         self.REMOVE_FLAG = '-r'
 
     def execute(self, command_with_arguments):
-        # show monitors
         if len(command_with_arguments) == 1 and command_with_arguments[0] == 'monitors':
+            # show the existing monitors
             return self.monitored_paths.keys()
 
-        if len(command_with_arguments) != 3:
-            raise TypeError("expecting 2 arguments")
+        if len(command_with_arguments) == 3:
+            if command_with_arguments[1] == self.REMOVE_FLAG:
+                # the command is: monitor -r {monitored_path}
+                return self.__remove_monitor(command_with_arguments[2])
+            else:
+                # the command is monitor {path} {logpath}
+                return self.__add_monitor(command_with_arguments[1], command_with_arguments[2])
 
-        if command_with_arguments[1] == self.REMOVE_FLAG:  # -r is a remove flag
-            return self.__remove_monitor(command_with_arguments[2])
-
-        return self.__add_monitor(command_with_arguments[1], command_with_arguments[2])
+        raise TypeError("Incorrect usage")
 
     def __remove_monitor(self, monitored_path):
         self.monitored_paths[monitored_path].stop()
