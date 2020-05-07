@@ -1,6 +1,6 @@
 import pytest
 import builtins
-import rpyc_client.Terminal
+from client import get_terminal
 import os
 import shutil
 
@@ -31,7 +31,7 @@ def set_input_commands(monkeypatch, request):
 @pytest.fixture(scope='module')
 def terminal(server_ip_port):
     server_ip, server_port = tuple(server_ip_port.split(':'))
-    user_terminal = rpyc_client.Terminal.Terminal(server_ip, server_port, is_test_mod=True)
+    user_terminal = get_terminal(server_ip, server_port, is_test_mod=True)
     yield user_terminal
     user_terminal.stop()
 

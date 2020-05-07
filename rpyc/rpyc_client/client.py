@@ -6,9 +6,9 @@ from server import DEFAULT_PORT
 DEFAULT_IP = "localhost"
 
 
-def get_terminal(ip_server=DEFAULT_IP, port_server=DEFAULT_PORT):
+def get_terminal(ip_server=DEFAULT_IP, port_server=DEFAULT_PORT, is_test_mod=False):
     command_handlers_manager = CommandHandlersManager(ip_server, port_server)
-    return Terminal(command_handlers_manager)
+    return Terminal(command_handlers_manager, is_test_mod=is_test_mod)
 
 
 """
