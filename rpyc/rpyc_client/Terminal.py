@@ -5,19 +5,19 @@ DEFAULT_PROMPT = '> '
 MAX_INPUT_LENGTH = 2000
 EXIT_TERMINAL_COMMANDS = ["quit", "exit"]
 
-"""
-The Terminal that reads commands and give them to the command_handlers_manager to execute.
-Just a simple terminal, no advanced features.
-__init__ may throw ConnectionRefusedError.
-"""
-
 
 class Terminal(object):
     """
-    command_handlers_manager is type CommandHandlersManager
+    The Terminal that reads commands and give them to the command_handlers_manager to execute.
+    Just a simple terminal, no advanced features.
     """
 
     def __init__(self, command_handlers_manager, prompt=DEFAULT_PROMPT):
+        """
+        May throw ConnectionRefusedError.
+        :param command_handlers_manager: type CommandHandlersManager. Executes all the commands given to the terminal
+        :param prompt:
+        """
         self.prompt = prompt
         self.command_handlers_manager = command_handlers_manager
         self.is_activated = False
