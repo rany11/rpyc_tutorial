@@ -1,62 +1,68 @@
 import psutil
 import datetime
+import argparse
+
+DEFAULT_COPY_CHUNK_SIZE = 2 ** 14
+
+
+def parse_single_path_argument(argv):
+    parser = argparse.ArgumentParser(prog=argv[0])
+    parser.add_argument('path')
+    args = parser.parse_args(argv[1:])
+    return args.path
+
 
 """
 All the command handlers.
-They parse, execute and possibly format the output for the terminal.
-They (must) also return (and receive) additional information to the command_handlers_manager. 
+They parse, execute and return output (if any) to the terminal. 
 """
 
 
 class CommandHandler(object):
     def __init__(self, rpyc_conn):
         self.rpyc_conn = rpyc_conn
-        self.empty_output = (None, None)
 
-    def _parse_input(self, split_input, additional_input):
-        pass
-
-    def _execute(self, **kwargs):
-        return self.empty_output
-
-    def _format_output(self, output):
-        return output
-
-    def handle_command(self, split_input, additional_input):
-        try:
-            kwargs = self._parse_input(split_input, additional_input)
-            terminal_output, manager_output = self._execute(**kwargs)
-            terminal_output = self._format_output(terminal_output) if terminal_output else terminal_output
-            return terminal_output, manager_output
-        except BaseException as e:
-            return 'Error: ' + str(e), None
+    def execute(self, command_with_arguments):
+        """
+        executes the command. Might raise exception on failures or incorrect usage.
+        :param command_with_arguments: exactly as argv for a script
+        :return: string that is an output to the terminal
+        """
+        raise NotImplementedError()
 
 
 class CopyFileHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) != 3:
-            raise TypeError('expected two arguments')
+    def __init__(self, rpyc_conn):
+        super().__init__(rpyc_conn)
+        self.DOWNLOAD_COMMAND = 'download'
+        self.UPLOAD_COMMAND = 'upload'
 
-        command = split_input[0]
-        if command == 'upload':
-            return {'local_path': split_input[1], 'remote_path': split_input[2], 'mod': command}
-        else:
-            return {'remote_path': split_input[1], 'local_path': split_input[2], 'mod': command}
+    def execute(self, command_with_arguments):
+        srcpath, dstpath = self.__parse_input(command_with_arguments)
+        if command_with_arguments[0] == self.UPLOAD_COMMAND:
+            return self.__execute_upload(srcpath, dstpath)
+        elif command_with_arguments[0] == self.DOWNLOAD_COMMAND:
+            return self.__execute_download(srcpath, dstpath)
+        raise ValueError("Unexpected command")
 
-    def _execute(self, local_path, remote_path, mod):
-        chunk_size = 16000
-        local_path_open_mod, remote_path_open_mod = ("rb", "wb") if mod == 'upload' else ("wb", "rb")
+    def __parse_input(self, command_with_arguments):
+        parser = argparse.ArgumentParser(command_with_arguments[0])
+        parser.add_argument('srcpath')
+        parser.add_argument('dstpath')
+        args = parser.parse_args(command_with_arguments[1:])
+        return args.srcpath, args.dstpath
 
-        with open(local_path, local_path_open_mod) as lf:
-            with self.rpyc_conn.builtin.open(remote_path, remote_path_open_mod) as rf:
-                if mod == 'download':  # remote to local
-                    self.__copy_file(rf, lf, chunk_size)
-                elif mod == 'upload':  # local to remote
-                    self.__copy_file(lf, rf, chunk_size)
+    def __execute_upload(self, srcpath, dstpath):
+        with open(srcpath, 'rb') as src:
+            with self.rpyc_conn.builtin.open(dstpath, "wb") as dst:
+                self.__copy_file(src, dst)
 
-        return self.empty_output
+    def __execute_download(self, srcpath, dstpath):
+        with self.rpyc_conn.builtin.open(srcpath, 'rb') as src:
+            with open(dstpath, "wb") as dst:
+                self.__copy_file(src, dst)
 
-    def __copy_file(self, src_file_handler, dst_file_handler, chunk_size):
+    def __copy_file(self, src_file_handler, dst_file_handler, chunk_size=DEFAULT_COPY_CHUNK_SIZE):
         while True:
             buf = src_file_handler.read(chunk_size)
             if not buf:
@@ -65,23 +71,16 @@ class CopyFileHandler(CommandHandler):
 
 
 class DirlistHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) != 2:
-            raise TypeError('expected one argument')
-        return {'path': split_input[1]}
-
-    def _execute(self, path):
+    def execute(self, command_with_arguments):
+        path = parse_single_path_argument(command_with_arguments)
         remote_os = self.rpyc_conn.modules.os
-        return remote_os.listdir(path), None
+        return remote_os.listdir(path)
 
 
 class ProcessListHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) != 1:
-            raise TypeError('not expecting any arguments')
-        return dict()
+    def execute(self, command_with_arguments):
+        self.__validate_input(command_with_arguments)
 
-    def _execute(self):
         remote_psutil = self.rpyc_conn.modules.psutil
         process_list = []
         for proc in remote_psutil.process_iter():
@@ -91,84 +90,116 @@ class ProcessListHandler(CommandHandler):
                 process_id = proc.pid
                 process_list += [{'name': process_name, 'pid': process_id}]
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                pass
+                pass  # we can't access these processes
 
-        return process_list, None
+        return process_list
+
+    def __validate_input(self, command_with_arguments):
+        if len(command_with_arguments) != 1:
+            raise TypeError('not expecting any arguments')
 
 
 class FileStatHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) != 2:
-            raise TypeError('expecting one argument')
-        return {'path': split_input[1]}
-
-    def _execute(self, path):
+    def execute(self, command_with_arguments):
+        path = parse_single_path_argument(command_with_arguments)
         remote_os = self.rpyc_conn.modules.os
-        return remote_os.stat(path), None
+        return remote_os.stat(path)
 
 
 class KillProcessHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) < 2:
-            raise TypeError('expects at least one argument')
+    def __init__(self, rpyc_conn, created_processes):
+        super().__init__(rpyc_conn)
+        self.created_processes = created_processes
 
-        if len(split_input) == 3:
-            if not split_input[1].startswith('-'):
-                raise ValueError("kill signal number should start with '-'")
-            return {'signal': int(split_input[1][1:]), 'pid': int(split_input[2])}
-        elif len(split_input) == 2:
-            return {'pid': int(split_input[1])}
+    def __parse_input(self, command_with_arguments):
+        parser = argparse.ArgumentParser(command_with_arguments[0])
+        parser.add_argument('path')
+        args = parser.parse_args(command_with_arguments[1:])
+        return args.path
 
-        raise TypeError('too many arguments')
+    def execute(self, command_with_arguments):
+        if len(command_with_arguments) == 3:
+            # the command is: kill -signo pid
+            if not command_with_arguments[1].startswith('-'):
+                # signo should start with '-' prefix
+                raise ValueError('Incorrect usage')
+            return self.__execute_kill_signo_pid(command_with_arguments)
 
-    def _execute(self, pid, signal=9):
+        if len(command_with_arguments) == 2:
+            if command_with_arguments[1] == 'all':
+                # the command is: kill all
+                return self.__execute_kill_all()
+            else:
+                # the command is kill pid
+                return self.__execute_kill_pid(command_with_arguments)
+
+        raise TypeError('Incorrect usage')
+
+    def __execute_kill_signo_pid(self, command_with_arguments):
+        signo = int(command_with_arguments[1][1:])
+        pid = int(command_with_arguments[2])
+        return self.__kill(pid, signo)
+
+    def __execute_kill_pid(self, command_with_arguments):
+        pid = int(command_with_arguments[1])
+        return self.__kill(pid)
+
+    def __kill(self, pid, signal=9):
         remote_os = self.rpyc_conn.modules.os
         remote_os.kill(pid, signal)
-        return self.empty_output
+
+    def __execute_kill_all(self):
+        for process in self.created_processes:
+            process.kill()
+        self.created_processes.clear()
 
 
 class RunAsNewProcessHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) < 2:
-            raise TypeError('expecting at least one argument')
-        return {'path_to_executable': split_input[1], 'argv_to_exe': split_input[2:]}
+    def __init__(self, rpyc_conn, created_processes):
+        super().__init__(rpyc_conn)
+        self.created_processes = created_processes
 
-    def _execute(self, path_to_executable, argv_to_exe):
+    def execute(self, command_with_arguments):
+        path_to_exe, argv_to_exe = command_with_arguments[1], command_with_arguments[2:]
         remote_subprocess = self.rpyc_conn.modules.subprocess
         string_args = ' '.join(argv_to_exe)
-        command_line_input = path_to_executable + ' ' + string_args
+        command_line_input = path_to_exe + ' ' + string_args
         process = remote_subprocess.Popen(command_line_input)
-        return None, process
+
+        self.created_processes += [process]
 
 
 class MonitorHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if len(split_input) != 3:
-            raise TypeError("expecting 2 arguments")
+    def __init__(self, rpyc_conn):
+        super().__init__(rpyc_conn)
+        self.monitored_paths = dict()  # filepath --> FileMonitor object
+        self.REMOVE_FLAG = '-r'
 
-        if split_input[1] == '-r':
-            return {'monitored_path': split_input[2], 'log_path': '', 'monitors': additional_input, 'remove': True}
+    def execute(self, command_with_arguments):
+        if len(command_with_arguments) == 1 and command_with_arguments[0] == 'monitors':
+            # show the existing monitors
+            return self.monitored_paths.keys()
 
-        return {'monitored_path': split_input[1], 'log_path': split_input[2], 'monitors': additional_input}
+        if len(command_with_arguments) == 3:
+            if command_with_arguments[1] == self.REMOVE_FLAG:
+                # the command is: monitor -r {monitored_path}
+                return self.__remove_monitor(command_with_arguments[2])
+            else:
+                # the command is monitor {path} {logpath}
+                return self.__add_monitor(command_with_arguments[1], command_with_arguments[2])
 
-    def _execute(self, monitored_path, log_path, monitors, remove=False):
-        if not remove and monitored_path in monitors:
-            return self.empty_output
+        raise TypeError("Incorrect usage")
 
-        if remove and monitored_path in monitors:
-            monitors[monitored_path].stop()
-            del monitors[monitored_path]
-            return self.empty_output
+    def __remove_monitor(self, monitored_path):
+        self.monitored_paths[monitored_path].stop()
+        del self.monitored_paths[monitored_path]
 
-        if remove and monitored_path not in monitors:
-            return self.empty_output
+    def __add_monitor(self, path_to_monitor, log_path):
+        file_monitor = self.rpyc_conn.root.FileMonitor(path_to_monitor, self.__get_callback_on_file_change(log_path))
+        self.monitored_paths[path_to_monitor] = file_monitor
 
-        # not remove and monitored_path not in monitors
-        return '', self.rpyc_conn.root.FileMonitor(monitored_path, self.__get_callback(log_path))
-
-    # Warning: Careful with this closure
-    def __get_callback(self, log_path):
-        def callback(old_stat, new_stat):
+    def __get_callback_on_file_change(self, log_path):
+        def on_file_change_callback(old_stat, new_stat):
             with open(log_path, 'a+') as log_file:
                 print(datetime.datetime.now(), file=log_file)
                 print('old stat:', file=log_file)
@@ -177,17 +208,29 @@ class MonitorHandler(CommandHandler):
                 print(new_stat, '\n', file=log_file)
                 print('-------------------------\n', file=log_file)
 
-        return callback
+        return on_file_change_callback
+
+    def close_monitors(self):
+        for monitor in self.monitored_paths.values():
+            monitor.stop()
 
 
 class RemoveHandler(CommandHandler):
-    def _parse_input(self, split_input, additional_input):
-        if {split_input[1], split_input[2]} != {'-r', '--empty-files'}:
-            raise TypeError("incorrect usage")
-        return {'path': split_input[3]}
+    def execute(self, command_with_arguments):
+        path_to_delete = self.__parse_input(command_with_arguments)
+        teleported_func = self.rpyc_conn.teleport(self.__get_remove_empty_files_recursively_function())
+        teleported_func(path_to_delete)
 
-    def __get_remove_empty_files_function(self):
-        def remove_empty_files(base_dir_path):
+    def __parse_input(self, command_with_arguments):
+        parser = argparse.ArgumentParser(prog=command_with_arguments[0])
+        parser.add_argument("-r", "--recursive", action="store_true", required=True)
+        parser.add_argument("--empty-files", action="store_true", required=True)
+        parser.add_argument('path')
+        args = parser.parse_args(command_with_arguments[1:])
+        return args.path
+
+    def __get_remove_empty_files_recursively_function(self):
+        def remove_empty_files_recursively(base_dir_path):
             import os
             for path, subdirs, files in os.walk(base_dir_path):
                 for name in files:
@@ -195,9 +238,4 @@ class RemoveHandler(CommandHandler):
                     if os.stat(full_file_name).st_size == 0:
                         os.remove(full_file_name)
 
-        return remove_empty_files
-
-    def _execute(self, path):
-        teleported_func = self.rpyc_conn.teleport(self.__get_remove_empty_files_function())
-        teleported_func(path)
-        return self.empty_output
+        return remove_empty_files_recursively

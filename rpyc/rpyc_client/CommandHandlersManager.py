@@ -1,6 +1,6 @@
 import rpyc
-from rpyc_client import command_handlers
-import subprocess
+import command_handlers
+from exceptions import CommandUsageError
 
 """
 manages all the command handlers.
@@ -26,94 +26,60 @@ rm -r --empty-files path
 
 class CommandHandlersManager(object):
     """
-    ip_slave_rpyc, port_slave_rpyc- ip and port of a machine that runs my special SlaveService.
-    (my special SlaveService: FileMonitorService)
+    @:arg ip_slave_rpyc, port_slave_rpyc
+     ip and port of a machine that runs my FileMonitorService.
+    (FileMonitorService is a SlaveService (inherits from it))
 
-    __init__ can throw: ConnectionRefusedError
+    @throws: ConnectionRefusedError
     """
 
     def __init__(self, ip_slave_rpyc, port_slave_rpyc):
         self.ip_slave_rpyc = ip_slave_rpyc
         self.port_slave_rpyc = port_slave_rpyc
 
+        # a rpyc connection to the server
         self.conn = rpyc.connect(ip_slave_rpyc, port=port_slave_rpyc)
+
+        # a rpyc classic-connection to the server (as a SlaveServer)
         self.classic_conn = rpyc.classic.connect(ip_slave_rpyc, port=port_slave_rpyc)
 
-        self.created_processes = []
-        self.command_handler = {"upload": command_handlers.CopyFileHandler(self.classic_conn),
-                                "download": command_handlers.CopyFileHandler(self.classic_conn),
-                                "ps": command_handlers.ProcessListHandler(self.classic_conn),
-                                "ls": command_handlers.DirlistHandler(self.classic_conn),
-                                "exec": command_handlers.RunAsNewProcessHandler(self.classic_conn),
-                                "stat": command_handlers.FileStatHandler(self.classic_conn),
-                                "kill": command_handlers.KillProcessHandler(self.classic_conn),
-                                "monitor": command_handlers.MonitorHandler(self.conn),
-                                "rm": command_handlers.RemoveHandler(self.classic_conn)
-                                }
-
-        self.monitors = dict()  # filepath --> monitor object
+        # Background serving thread to the server's requests
         self.bgsrv = rpyc.BgServingThread(self.conn)
 
-    """
-    returns: the command output (or None if not any).
-    Commands:
-     - get file content (args: path, read_mode)
-     - write content to file (args: write mode, pathname, content_to_write)
-     - get dirlist (args: pathname)
-     - get processlist
-     - execute file as new process (args: filepath)
-     - kill all created processes (created by the previous command)
-     - kill process (args: pid)
-     - get file stat (args: filepath)
-     
-     - monitor a file
-     - show monitors
-     - remove a monitor
-     - disable/enable a monitor (?)
-    """
+        created_processes = []
+        monitor_handler = command_handlers.MonitorHandler(self.conn)
+        upload_download_handler = command_handlers.CopyFileHandler(self.classic_conn)
+        self.command_handlers = {"upload": upload_download_handler,
+                                 "download": upload_download_handler,
+                                 "ps": command_handlers.ProcessListHandler(self.classic_conn),
+                                 "ls": command_handlers.DirlistHandler(self.classic_conn),
+                                 "exec": command_handlers.RunAsNewProcessHandler(self.classic_conn, created_processes),
+                                 "stat": command_handlers.FileStatHandler(self.classic_conn),
+                                 "kill": command_handlers.KillProcessHandler(self.classic_conn, created_processes),
+                                 "monitor": monitor_handler,
+                                 "monitors": monitor_handler,
+                                 "rm": command_handlers.RemoveHandler(self.classic_conn)
+                                 }
 
-    def execute(self, command, args):
-        command_with_args = [command] + args
-        original_command_line_input = ' '.join(command_with_args)
+    def execute(self, command_with_args):
+        """
+        @returns: the command output (or None if there is no output).
+        """
+        command = command_with_args[0]
+        if command not in self.command_handlers:
+            raise CommandUsageError('Unknown command')
 
-        if original_command_line_input == 'kill all':
-            self.__kill_all_created_processes()
-            return
-        elif original_command_line_input == 'monitors':
-            return self.__get_monitored_paths()
-
-        if command not in self.command_handler:
-            return 'Error: Unknown command'
-
-        additional_input = None
-        if command.startswith('kill'):
-            additional_input = self.created_processes
-        elif command.startswith('monitor'):
-            additional_input = self.monitors
-        terminal_output, manager_output = self.command_handler[command].handle_command(command_with_args,
-                                                                                       additional_input)
-        if manager_output:
-            if type(manager_output) == subprocess.Popen:
-                self.created_processes += [manager_output]
-            else:  # it's a monitor
-                self.monitors[manager_output.get_monitored_filepath()] = manager_output
-        return terminal_output
+        try:
+            terminal_output = self.command_handlers[command].execute(command_with_args)
+            return terminal_output
+        except Exception as e:
+            # get just the error message without the stack-trace
+            raise CommandUsageError(str(e).split('\n')[0])
+        except SystemExit as _:  # this can be raised from argparse.parse_args() in case of wrong usage
+            raise CommandUsageError("incorrect usage")
 
     def close(self):
-        for monitor in self.monitors:
-            monitor.stop()
+        self.command_handlers['monitor'].close_monitors()
         self.bgsrv.stop()
         self.conn.close()
         self.classic_conn.close()
-
-    def __kill_all_created_processes(self):
-        for process in self.created_processes:
-            process.kill()
-
-    def __get_monitored_paths(self):
-        return self.monitors.keys()
-
-    def __remove_monitor(self, filepath):
-        if filepath in self.monitors:
-            self.monitors[filepath].close()
-            del self.monitors[filepath]

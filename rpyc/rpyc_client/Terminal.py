@@ -1,5 +1,9 @@
 import sys
-from rpyc_client.CommandHandlersManager import CommandHandlersManager
+from exceptions import CommandUsageError
+
+DEFAULT_PROMPT = '> '
+MAX_INPUT_LENGTH = 2000
+EXIT_TERMINAL_COMMANDS = ["quit", "exit"]
 
 """
 The Terminal that reads commands and give them to the command_handlers_manager to execute.
@@ -12,43 +16,47 @@ class Terminal(object):
     """
     command_handlers_manager is type CommandHandlersManager
     """
-
-    def __init__(self, server_ip, server_port, prompt='> ', is_test_mod=False):
+    def __init__(self, command_handlers_manager, prompt=DEFAULT_PROMPT, is_test_mod=False):
         self.prompt = prompt
-        self.command_handlers_manager = CommandHandlersManager(server_ip, server_port)
+        self.command_handlers_manager = command_handlers_manager
         self.is_activated = False
         self.is_test_mod = is_test_mod
 
     def start(self):
         self.is_activated = True
         while self.is_activated:
-            command_output = self.read_execute_command()
-            if command_output:
-                if type(command_output) is str and command_output.startswith('Error: '):
-                    print(command_output, file=sys.stderr)
-                else:
+            try:
+                command_output = self.read_execute_command()
+                if command_output:
                     print(command_output)
+            except CommandUsageError as e:
+                print(e.error_message, file=sys.stderr)
 
         if not self.is_test_mod:
             self.stop()
 
     def read_execute_command(self):
+        """
+        This function read a single command from the user, executes and returns the terminal output.
+        @throws: ErrorMessage
+        """
         user_input = input(self.prompt)
-        if len(user_input) > 500:
-            print("input is too long", file=sys.stderr)
-            return
-        if len(user_input) == 0:
+        if not self.__is_user_input_valid(user_input):
+            raise CommandUsageError("invalid input")
+        if len(user_input) == 0:  # user just pressed Enter key. We do nothing
             return
 
         split_input = user_input.split(' ')
-        user_command, command_args = split_input[0], split_input[1:]
-
-        if user_command in ["quit", "exit"]:
+        user_command = split_input[0]
+        if user_command in EXIT_TERMINAL_COMMANDS:
             self.is_activated = False
             return
 
-        command_output = self.command_handlers_manager.execute(user_command, command_args)
+        command_output = self.command_handlers_manager.execute(split_input)
         return command_output
 
     def stop(self):
         self.command_handlers_manager.close()
+
+    def __is_user_input_valid(self, user_input):
+        return len(user_input) <= MAX_INPUT_LENGTH
