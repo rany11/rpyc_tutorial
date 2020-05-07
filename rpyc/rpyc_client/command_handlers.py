@@ -160,7 +160,7 @@ class RunAsNewProcessHandler(CommandHandler):
         self.created_processes = created_processes
 
     def execute(self, command_with_arguments):
-        path_to_exe, argv_to_exe = command_with_arguments[0], command_with_arguments[1:]
+        path_to_exe, argv_to_exe = command_with_arguments[1], command_with_arguments[2:]
         remote_subprocess = self.rpyc_conn.modules.subprocess
         string_args = ' '.join(argv_to_exe)
         command_line_input = path_to_exe + ' ' + string_args
