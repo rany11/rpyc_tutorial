@@ -172,6 +172,7 @@ class MonitorHandler(CommandHandler):
     def __init__(self, rpyc_conn):
         super().__init__(rpyc_conn)
         self.monitored_paths = dict()  # filepath --> FileMonitor object
+        self.REMOVE_FLAG = '-r'
 
     def execute(self, command_with_arguments):
         # show monitors
@@ -181,7 +182,7 @@ class MonitorHandler(CommandHandler):
         if len(command_with_arguments) != 3:
             raise TypeError("expecting 2 arguments")
 
-        if command_with_arguments[1] == '-r':  # -r is a remove flag
+        if command_with_arguments[1] == self.REMOVE_FLAG:  # -r is a remove flag
             return self.__remove_monitor(command_with_arguments[2])
 
         return self.__add_monitor(command_with_arguments[1], command_with_arguments[2])
@@ -219,13 +220,10 @@ class RemoveHandler(CommandHandler):
 
     def __parse_input(self, command_with_arguments):
         parser = argparse.ArgumentParser(prog=command_with_arguments[0])
-        parser.add_argument("-r", "--recursive", action="store_true")
-        parser.add_argument("--empty-files", action="store_true")
+        parser.add_argument("-r", "--recursive", action="store_true", required=True)
+        parser.add_argument("--empty-files", action="store_true", required=True)
         parser.add_argument('path')
         args = parser.parse_args(command_with_arguments[1:])
-        if not (args.recursive and args.empty_files):
-            raise TypeError('Incorrect usage')
-
         return args.path
 
     def __get_remove_empty_files_recursively_function(self):
