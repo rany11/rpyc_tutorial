@@ -146,6 +146,11 @@ class KillProcessHandler(CommandHandler):
 
     def __kill(self, pid, signal=9):
         remote_os = self.rpyc_conn.modules.os
+        """
+        if the process was created by exec command,
+        should remove it from self.created_processes list.
+        However, this is ok as it is.
+        """
         remote_os.kill(pid, signal)
 
     def __execute_kill_all(self):
